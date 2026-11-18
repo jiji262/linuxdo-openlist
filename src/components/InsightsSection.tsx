@@ -23,7 +23,7 @@ export function InsightsSection({
   const maxMonthCount = Math.max(...recentMonths.map((m) => m.count), 1);
 
   return (
-    <section id="insights" className="border-t-2 border-border py-14 sm:py-20">
+    <section id="insights" className="scroll-mt-20 border-t-2 border-border py-14 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-10 max-w-2xl">
           <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border-2 border-border bg-primary/15 px-3 py-1 text-xs font-extrabold text-primary">

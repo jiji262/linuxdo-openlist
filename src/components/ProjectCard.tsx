@@ -134,41 +134,26 @@ export function ProjectCard({
               onError={() => setImgError(true)}
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
-            <div className="absolute top-3 left-3 flex items-center gap-1.5">
-              <span className="rounded-xl border-2 border-border bg-background/95 px-2.5 py-0.5 text-xs font-extrabold backdrop-blur-sm">
-                {item.category}
-              </span>
-              {item.repoHost && (
-                <span className="rounded-xl border-2 border-border bg-primary px-2.5 py-0.5 font-mono text-[11px] font-extrabold text-primary-foreground">
-                  {getHostLabel(item.repoHost)}
-                </span>
-              )}
-            </div>
-            <div className="absolute right-3 bottom-2.5 rounded-lg border border-border bg-background/90 px-2 py-0.5 font-mono text-[11px] font-bold backdrop-blur-sm">
-              {formatRelativeTime(item.createdAt)}
-            </div>
           </div>
         )}
 
         <div className="p-5">
-          {/* Top Meta Row when no image */}
-          {(!item.image || imgError) && (
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5">
-                <span className="rounded-xl border border-border bg-primary/15 px-2.5 py-0.5 text-xs font-extrabold text-primary">
-                  {item.category}
-                </span>
-                {item.repoHost && (
-                  <span className="rounded-xl border border-border bg-muted px-2 py-0.5 font-mono text-[11px] font-bold">
-                    {getHostLabel(item.repoHost)}
-                  </span>
-                )}
-              </div>
-              <span className="font-mono text-[11px] font-bold text-muted-foreground">
-                {formatRelativeTime(item.createdAt)}
+          {/* Category, Host & Relative Time Row */}
+          <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className="rounded-xl border border-border bg-primary/15 px-2.5 py-0.5 text-xs font-extrabold text-primary">
+                {item.category}
               </span>
+              {item.repoHost && (
+                <span className="rounded-xl border border-border bg-muted px-2 py-0.5 font-mono text-[11px] font-bold">
+                  {getHostLabel(item.repoHost)}
+                </span>
+              )}
             </div>
-          )}
+            <span className="font-mono text-[11px] font-bold text-muted-foreground">
+              {formatRelativeTime(item.createdAt)}
+            </span>
+          </div>
 
           {/* Post Creation Timestamp */}
           <div className="mb-2 flex items-center gap-1.5 font-mono text-xs font-bold text-muted-foreground">

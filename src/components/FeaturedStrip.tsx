@@ -25,7 +25,7 @@ export function FeaturedStrip({ items, onSelectProject }: FeaturedStripProps) {
   if (featured.length === 0) return null;
 
   return (
-    <section id="featured" className="border-b-2 border-border py-12 sm:py-16">
+    <section id="featured" className="scroll-mt-20 border-b-2 border-border py-12 sm:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>

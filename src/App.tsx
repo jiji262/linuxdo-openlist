@@ -272,7 +272,7 @@ export function App() {
         )}
 
         {/* Main Open Source Project Directory */}
-        <section id="directory" className="py-12 sm:py-16">
+        <section id="directory" className="scroll-mt-20 py-12 sm:py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
               <div>
@@ -324,9 +324,9 @@ export function App() {
 
             {/* Search & Filter Control Panel */}
             <div className="mb-8 rounded-3xl border-2 border-border bg-card p-4 shadow-hard sm:p-6">
-              <div className="grid gap-3 lg:grid-cols-12">
+              <div className="grid gap-3 md:grid-cols-12">
                 {/* Search Input */}
-                <div className="relative lg:col-span-6">
+                <div className="relative md:col-span-5 lg:col-span-6">
                   <Search className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <input
                     ref={searchInputRef}
@@ -349,7 +349,7 @@ export function App() {
                 </div>
 
                 {/* Time Filter */}
-                <div className="lg:col-span-2">
+                <div className="md:col-span-2">
                   <select
                     value={timeRange}
                     onChange={(e) => {
@@ -357,22 +357,22 @@ export function App() {
                       if (e.target.value !== "all") setSelectedMonth("all");
                     }}
                     aria-label="发布时间范围"
-                    className="h-12 w-full rounded-2xl border-2 border-border bg-background px-3.5 text-sm font-extrabold text-foreground focus:border-primary focus:outline-none cursor-pointer"
+                    className="h-12 w-full rounded-2xl border-2 border-border bg-background px-3 text-sm font-extrabold text-foreground focus:border-primary focus:outline-none cursor-pointer"
                   >
                     <option value="all">全部时间</option>
-                    <option value="7d">最近 7 天发布</option>
-                    <option value="30d">最近 30 天发布</option>
-                    <option value="90d">最近 90 天发布</option>
+                    <option value="7d">最近 7 天</option>
+                    <option value="30d">最近 30 天</option>
+                    <option value="90d">最近 90 天</option>
                   </select>
                 </div>
 
                 {/* Sort Select */}
-                <div className="lg:col-span-2">
+                <div className="md:col-span-3 lg:col-span-2">
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortKey)}
                     aria-label="排序方式"
-                    className="h-12 w-full rounded-2xl border-2 border-border bg-background px-3.5 text-sm font-extrabold text-foreground focus:border-primary focus:outline-none cursor-pointer"
+                    className="h-12 w-full rounded-2xl border-2 border-border bg-background px-3 text-sm font-extrabold text-foreground focus:border-primary focus:outline-none cursor-pointer"
                   >
                     <option value="newest">最新发布优先</option>
                     <option value="likes">最多点赞优先</option>
@@ -383,7 +383,7 @@ export function App() {
                 </div>
 
                 {/* Only With Direct Repo Toggle */}
-                <div className="lg:col-span-2">
+                <div className="md:col-span-2">
                   <button
                     type="button"
                     onClick={() => setOnlyWithRepo((v) => !v)}
@@ -394,7 +394,7 @@ export function App() {
                     }`}
                   >
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
-                    <span>仅含直达仓库</span>
+                    <span>直达仓库</span>
                   </button>
                 </div>
               </div>
