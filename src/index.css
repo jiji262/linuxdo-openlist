@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: oklch(98% 0.01 85);
+  --foreground: oklch(20% 0.02 85);
+  --card: oklch(100% 0 0);
+  --card-foreground: oklch(20% 0.02 85);
+  --popover: oklch(100% 0 0);
+  --popover-foreground: oklch(20% 0.02 85);
+  --primary: oklch(65% 0.2 30);
+  --primary-foreground: oklch(99% 0 0);
+  --secondary: oklch(92% 0.07 150);
+  --secondary-foreground: oklch(24% 0.06 150);
+  --muted: oklch(93.5% 0.014 85);
+  --muted-foreground: oklch(46% 0.02 85);
+  --accent: oklch(93% 0.045 290);
+  --accent-foreground: oklch(28% 0.09 290);
+  --border: oklch(20% 0.02 85);
+  --border-subtle: oklch(84% 0.02 85);
+  --shadow-color: oklch(20% 0.02 85);
+  --hero-glow: radial-gradient(circle at 20% 15%, oklch(88% 0.09 40 / 0.35), transparent 52%),
+    radial-gradient(circle at 82% 20%, oklch(90% 0.08 150 / 0.3), transparent 48%);
+}
+
+.dark {
+  --background: oklch(12% 0.02 260);
+  --foreground: oklch(93% 0.01 260);
+  --card: oklch(15.5% 0.028 260);
+  --card-foreground: oklch(93% 0.01 260);
+  --popover: oklch(16% 0.03 260);
+  --popover-foreground: oklch(93% 0.01 260);
+  --primary: oklch(72% 0.2 145);
+  --primary-foreground: oklch(12% 0.08 145);
+  --secondary: oklch(23% 0.045 260);
+  --secondary-foreground: oklch(92% 0.01 260);
+  --muted: oklch(19.5% 0.03 260);
+  --muted-foreground: oklch(64% 0.04 260);
+  --accent: oklch(24% 0.05 260);
+  --accent-foreground: oklch(93% 0.01 260);
+  --border: oklch(31% 0.05 260);
+  --border-subtle: oklch(24% 0.04 260);
+  --shadow-color: oklch(28% 0.05 260);
+  --hero-glow: radial-gradient(circle at 18% 12%, oklch(45% 0.16 145 / 0.16), transparent 50%),
+    radial-gradient(circle at 82% 18%, oklch(40% 0.14 260 / 0.22), transparent 50%);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --font-sans: "Nunito", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-family: var(--font-sans);
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+}
+
+.hero-backdrop {
+  background-image: var(--hero-glow);
+}
+
+.shadow-hard {
+  box-shadow: 4px 4px 0 0 var(--shadow-color);
+}
+
+.shadow-hard-sm {
+  box-shadow: 2px 2px 0 0 var(--shadow-color);
+}
+
+.shadow-hard-lg {
+  box-shadow: 7px 7px 0 0 var(--shadow-color);
+}
+
+.tactile-btn {
+  border: 2px solid var(--border);
+  box-shadow: 3px 3px 0 0 var(--shadow-color);
+  transition: transform 0.14s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.14s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.15s ease;
+}
+
+.tactile-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 0 var(--shadow-color);
+}
+
+.tactile-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 0 var(--shadow-color);
+}
+
+.tactile-card {
+  border: 2px solid var(--border);
+  box-shadow: 4px 4px 0 0 var(--shadow-color);
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.18s ease;
+}
+
+.tactile-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 0 var(--shadow-color);
+}
+
+/* Custom subtle scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
