@@ -2,6 +2,12 @@
   "framework": "vite",
   "buildCommand": "pnpm build",
   "outputDirectory": "dist",
+  "crons": [
+    {
+      "path": "/api/cron/sync",
+      "schedule": "0 2 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/data/(.*)",
@@ -15,7 +21,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!assets|data|favicon\\.svg).*)",
+      "source": "/((?!api|assets|data|favicon\\.svg).*)",
       "destination": "/index.html"
     }
   ]

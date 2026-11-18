@@ -17,8 +17,20 @@ export interface ProjectAuthor {
   avatar: string | null;
 }
 
+export interface RelatedPost {
+  id: number;
+  title: string;
+  topicUrl: string;
+  createdAt: string;
+  likes: number;
+  views: number;
+  replies: number;
+  authorUsername: string;
+}
+
 export interface ProjectItem {
   id: number;
+  projectKey: string;
   name: string;
   title: string;
   summary: string;
@@ -29,6 +41,7 @@ export interface ProjectItem {
   demoUrl?: string | null;
   topicUrl: string;
   createdAt: string;
+  firstCreatedAt: string;
   bumpedAt: string;
   category: string;
   tags: string[];
@@ -37,6 +50,8 @@ export interface ProjectItem {
   views: number;
   replies: number;
   image: string | null;
+  postCount: number;
+  posts?: RelatedPost[];
 }
 
 export interface MonthlyStat {
@@ -61,9 +76,13 @@ export interface AuthorStat {
 export interface ProjectsDataset {
   updatedAt: string;
   sourceUrl: string;
+  dataSource?: "neon-postgres" | "static-fallback";
   isPartial?: boolean;
   stats: {
+    totalProjects: number;
     totalTopics: number;
+    mergedDuplicatePosts: number;
+    multiPostProjectsCount: number;
     withRepoCount: number;
     uniqueReposCount: number;
     totalLikes: number;

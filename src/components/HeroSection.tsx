@@ -15,17 +15,17 @@ export function HeroSection({ stats, updatedAt, onExplore, onRandomPick }: HeroS
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl">
           {/* Status Badge */}
-          <div className="mb-7 inline-flex items-center gap-2.5 rounded-full border-2 border-border bg-card px-4 py-1.5 text-xs font-bold shadow-hard-sm sm:text-sm">
+          <div className="mb-7 inline-flex flex-wrap items-center gap-2.5 rounded-full border-2 border-border bg-card px-4 py-1.5 text-xs font-bold shadow-hard-sm sm:text-sm">
             <span className="relative flex h-2.5 w-2.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
             </span>
             <span>
-              同步自 LINUX DO <span className="font-mono text-primary">#开源推广</span> 全部历史帖
+              同步自 LINUX DO <span className="font-mono text-primary">#开源推广</span> · Neon 数据库存储
             </span>
             {updatedAt && (
               <span className="hidden border-l border-border pl-2.5 font-mono text-xs text-muted-foreground sm:inline">
-                更新于 {formatShortDate(updatedAt)}
+                每日自动同步 · 更新于 {formatShortDate(updatedAt)}
               </span>
             )}
           </div>
@@ -39,7 +39,7 @@ export function HeroSection({ stats, updatedAt, onExplore, onRandomPick }: HeroS
           </h1>
 
           <p className="mt-6 max-w-2xl text-base leading-relaxed font-semibold text-muted-foreground sm:text-xl">
-            完整收录 <code className="rounded-lg border border-border bg-muted px-2 py-0.5 font-mono text-sm text-foreground">linux.do/tag/2234-tag/2234</code> 下的每一个社区开源发布帖，清晰整理项目创建时间、核心功能介绍与对应的开源仓库地址。免登录即刻检索、直达源码。
+            完整收录<span className="mx-1 rounded-lg border border-border bg-muted px-2 py-0.5 font-mono text-sm font-extrabold text-foreground">#开源推广#</span>标签下的每一个社区开源发布帖，智能识别并合并重复发布与多帖迭代项目，清晰整理创建时间、核心功能介绍与对应的开源仓库地址。免登录即刻检索、直达源码。
           </p>
 
           {/* CTA Buttons */}
@@ -78,31 +78,35 @@ export function HeroSection({ stats, updatedAt, onExplore, onRandomPick }: HeroS
         <div className="mt-12 grid grid-cols-2 gap-4 lg:grid-cols-4">
           <div className="tactile-card rounded-2xl bg-card p-5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-muted-foreground sm:text-sm">收录开源帖总数</span>
+              <span className="text-xs font-bold text-muted-foreground sm:text-sm">去重收录开源项目</span>
               <span className="flex h-8 w-8 items-center justify-center rounded-xl border-2 border-border bg-primary/15 text-primary">
                 <Sparkles className="h-4 w-4" />
               </span>
             </div>
             <div className="mt-3 font-mono text-2xl font-bold tracking-tight sm:text-3xl">
-              {stats ? stats.totalTopics.toLocaleString() : "—"}
+              {stats ? (stats.totalProjects ?? stats.totalTopics).toLocaleString() : "—"}
             </div>
             <div className="mt-1 text-xs font-semibold text-muted-foreground">
-              覆盖全部 #2234 历史归档
+              {stats
+                ? `聚合自 ${stats.totalTopics.toLocaleString()} 篇帖 · 合并 ${stats.mergedDuplicatePosts.toLocaleString()} 篇同项目帖`
+                : "覆盖全部 #开源推广# 历史归档"}
             </div>
           </div>
 
           <div className="tactile-card rounded-2xl bg-card p-5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-muted-foreground sm:text-sm">独立开源仓库地址</span>
+              <span className="text-xs font-bold text-muted-foreground sm:text-sm">直达源码仓库项目</span>
               <span className="flex h-8 w-8 items-center justify-center rounded-xl border-2 border-border bg-primary/15 text-primary">
                 <GitFork className="h-4 w-4" />
               </span>
             </div>
             <div className="mt-3 font-mono text-2xl font-bold tracking-tight sm:text-3xl">
-              {stats ? stats.uniqueReposCount.toLocaleString() : "—"}
+              {stats ? stats.withRepoCount.toLocaleString() : "—"}
             </div>
             <div className="mt-1 text-xs font-semibold text-muted-foreground">
-              {stats ? `${stats.withRepoCount.toLocaleString()} 篇含直达源码链接` : "GitHub / GitLab / Gitee 等"}
+              {stats
+                ? `${stats.multiPostProjectsCount.toLocaleString()} 个项目含多篇迭代讨论帖`
+                : "GitHub / GitLab / Gitee 等"}
             </div>
           </div>
 

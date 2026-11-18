@@ -2,10 +2,11 @@ import { Github, ExternalLink, Heart } from "lucide-react";
 
 interface FooterProps {
   updatedAt: string | null;
+  totalProjects: number;
   totalTopics: number;
 }
 
-export function Footer({ updatedAt, totalTopics }: FooterProps) {
+export function Footer({ updatedAt, totalProjects, totalTopics }: FooterProps) {
   return (
     <footer className="border-t-2 border-border bg-card/60 py-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -23,11 +24,13 @@ export function Footer({ updatedAt, totalTopics }: FooterProps) {
               <span className="text-xl font-black tracking-tight">LINUX DO OpenList</span>
             </div>
             <p className="mt-3 max-w-md text-sm leading-relaxed font-semibold text-muted-foreground">
-              聚合整理自 LINUX DO 社区 <span className="font-mono text-foreground">#开源推广</span> 标签下的 {totalTopics > 0 ? totalTopics.toLocaleString() : "全部"} 篇开源自荐与项目发布帖。致敬每一位无私分享源码的社区创造者。
+              聚合整理自 LINUX DO 社区 <span className="font-mono text-foreground">#开源推广#</span> 标签下的{" "}
+              {totalProjects > 0 ? totalProjects.toLocaleString() : "全部"} 个独立开源项目（合并自{" "}
+              {totalTopics > 0 ? totalTopics.toLocaleString() : "全部"} 篇开源自荐与迭代帖）。基于 Vercel Neon Postgres 驱动。
             </p>
             {updatedAt && (
               <p className="mt-3 font-mono text-xs text-muted-foreground">
-                数据快照时间：{new Date(updatedAt).toLocaleString("zh-CN")}
+                数据同步时间：{new Date(updatedAt).toLocaleString("zh-CN")} · 每日定时增量同步
               </p>
             )}
           </div>

@@ -9,6 +9,7 @@ import {
   ChevronRight,
   RotateCcw,
   CheckCircle2,
+  Layers,
 } from "lucide-react";
 import type { ProjectItem, ProjectsDataset } from "./types";
 import { Navbar } from "./components/Navbar";
@@ -31,9 +32,26 @@ const CATEGORIES = [
   "社区与综合",
 ] as const;
 
-type SortKey = "newest" | "oldest" | "likes" | "views" | "replies";
+type SortKey = "newest" | "oldest" | "likes" | "views" | "replies" | "posts";
 
 const PAGE_SIZE = 24;
+
+async function fetchJsonWithFallback<T>(apiUrl: string, fallbackUrl: string): Promise<T> {
+  try {
+    const res = await fetch(apiUrl);
+    const ct = res.headers.get("content-type") || "";
+    if (res.ok && ct.includes("application/json")) {
+      return (await res.json()) as T;
+    }
+  } catch {
+    // Fall back to static bundle when running plain vite dev offline
+  }
+  const fallbackRes = await fetch(fallbackUrl);
+  if (!fallbackRes.ok) {
+    throw new Error(`HTTP ${fallbackRes.status}`);
+  }
+  return (await fallbackRes.json()) as T;
+}
 
 export function App() {
   const [theme, setTheme] = useState<"dark" | "light">(() => {
@@ -55,6 +73,7 @@ export function App() {
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [timeRange, setTimeRange] = useState<"all" | "7d" | "30d" | "90d">("all");
   const [onlyWithRepo, setOnlyWithRepo] = useState<boolean>(false);
+  const [onlyMultiPost, setOnlyMultiPost] = useState<boolean>(false);
   const [sortBy, setSortBy] = useState<SortKey>("newest");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [page, setPage] = useState(1);
@@ -95,13 +114,12 @@ export function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // Load fast bootstrap dataset first, then hydrate full archive seamlessly
+  // Load fast bootstrap dataset from Neon API first, then hydrate full archive seamlessly
   useEffect(() => {
     let cancelled = false;
     let fullLoaded = false;
 
-    fetch("/data/initial.json")
-      .then((res) => (res.ok ? (res.json() as Promise<ProjectsDataset>) : null))
+    fetchJsonWithFallback<ProjectsDataset>("/api/projects?mode=initial", "/data/initial.json")
       .then((initialData) => {
         if (!cancelled && initialData && !fullLoaded) {
           setDataset(initialData);
@@ -110,11 +128,7 @@ export function App() {
       })
       .catch(() => {});
 
-    fetch("/data/projects.json")
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json() as Promise<ProjectsDataset>;
-      })
+    fetchJsonWithFallback<ProjectsDataset>("/api/projects", "/data/projects.json")
       .then((data) => {
         if (!cancelled) {
           fullLoaded = true;
@@ -137,7 +151,17 @@ export function App() {
   // Reset pagination when filters change
   useEffect(() => {
     setPage(1);
-  }, [query, category, selectedTag, selectedAuthor, selectedMonth, timeRange, onlyWithRepo, sortBy]);
+  }, [
+    query,
+    category,
+    selectedTag,
+    selectedAuthor,
+    selectedMonth,
+    timeRange,
+    onlyWithRepo,
+    onlyMultiPost,
+    sortBy,
+  ]);
 
   // Category counts
   const categoryCounts = useMemo(() => {
@@ -165,6 +189,7 @@ export function App() {
 
     const list = dataset.items.filter((item) => {
       if (onlyWithRepo && !item.repoUrl) return false;
+      if (onlyMultiPost && item.postCount <= 1) return false;
       if (category !== "全部" && item.category !== category) return false;
       if (selectedTag && !item.tags.includes(selectedTag)) return false;
       if (selectedAuthor && item.author.username !== selectedAuthor) return false;
@@ -172,7 +197,8 @@ export function App() {
       if (rangeMs > 0 && now - new Date(item.createdAt).getTime() > rangeMs) return false;
 
       if (q) {
-        const hay = `${item.name} ${item.title} ${item.repoSlug ?? ""} ${item.repoUrl ?? ""} ${item.summary} ${item.author.username} ${item.author.name} ${item.tags.join(" ")}`.toLowerCase();
+        const postTitles = item.posts ? item.posts.map((p) => p.title).join(" ") : "";
+        const hay = `${item.name} ${item.title} ${postTitles} ${item.repoSlug ?? ""} ${item.repoUrl ?? ""} ${item.summary} ${item.author.username} ${item.author.name} ${item.tags.join(" ")}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -190,6 +216,8 @@ export function App() {
           return b.views - a.views;
         case "replies":
           return b.replies - a.replies;
+        case "posts":
+          return b.postCount - a.postCount || b.likes - a.likes;
       }
     });
 
@@ -203,6 +231,7 @@ export function App() {
     selectedMonth,
     timeRange,
     onlyWithRepo,
+    onlyMultiPost,
     sortBy,
   ]);
 
@@ -219,7 +248,8 @@ export function App() {
     selectedAuthor !== null ||
     selectedMonth !== "all" ||
     timeRange !== "all" ||
-    onlyWithRepo;
+    onlyWithRepo ||
+    onlyMultiPost;
 
   const resetAllFilters = () => {
     setQuery("");
@@ -229,6 +259,7 @@ export function App() {
     setSelectedMonth("all");
     setTimeRange("all");
     setOnlyWithRepo(false);
+    setOnlyMultiPost(false);
     setSortBy("newest");
   };
 
@@ -245,13 +276,16 @@ export function App() {
     setTimeout(() => searchInputRef.current?.focus(), 250);
   };
 
+  const displayTotalProjects =
+    dataset?.stats.totalProjects ?? dataset?.stats.totalTopics ?? 0;
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar
         theme={theme}
         onToggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
         onFocusSearch={focusDirectorySearch}
-        totalCount={dataset?.stats.totalTopics ?? 0}
+        totalCount={displayTotalProjects}
       />
 
       <main>
@@ -281,11 +315,11 @@ export function App() {
                   <span className="text-primary">
                     {loading
                       ? "加载中..."
-                      : `${(dataset?.isPartial && !hasActiveFilters ? dataset.stats.totalTopics : filteredItems.length).toLocaleString()} 个项目`}
+                      : `${(dataset?.isPartial && !hasActiveFilters ? displayTotalProjects : filteredItems.length).toLocaleString()} 个项目`}
                   </span>
                 </h2>
                 <p className="mt-1.5 text-sm font-semibold text-muted-foreground">
-                  按项目名、GitHub 仓库、功能介绍、标签、作者或发布时间自由筛选
+                  同名/同仓库多帖已自动去重合并并关联全部帖子 · 按名称、仓库、标签或作者自由筛选
                 </p>
               </div>
 
@@ -326,14 +360,14 @@ export function App() {
             <div className="mb-8 rounded-3xl border-2 border-border bg-card p-4 shadow-hard sm:p-6">
               <div className="grid gap-3 md:grid-cols-12">
                 {/* Search Input */}
-                <div className="relative md:col-span-5 lg:col-span-6">
+                <div className="relative md:col-span-4 lg:col-span-5">
                   <Search className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <input
                     ref={searchInputRef}
                     type="text"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="搜索项目名、owner/repo、关键词、作者 @username..."
+                    placeholder="搜索项目名、owner/repo、关联帖标题、作者..."
                     className="h-12 w-full rounded-2xl border-2 border-border bg-background pr-10 pl-11 text-sm font-bold text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
                   />
                   {query && (
@@ -367,7 +401,7 @@ export function App() {
                 </div>
 
                 {/* Sort Select */}
-                <div className="md:col-span-3 lg:col-span-2">
+                <div className="md:col-span-2">
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortKey)}
@@ -378,23 +412,37 @@ export function App() {
                     <option value="likes">最多点赞优先</option>
                     <option value="views">最多浏览优先</option>
                     <option value="replies">最多讨论优先</option>
+                    <option value="posts">关联帖数优先</option>
                     <option value="oldest">最早发布优先</option>
                   </select>
                 </div>
 
-                {/* Only With Direct Repo Toggle */}
-                <div className="md:col-span-2">
+                {/* Quick Toggles: Direct Repo & Multi-Post Merged */}
+                <div className="grid grid-cols-2 gap-2 md:col-span-4 lg:col-span-3">
                   <button
                     type="button"
                     onClick={() => setOnlyWithRepo((v) => !v)}
-                    className={`flex h-12 w-full items-center justify-center gap-1.5 rounded-2xl border-2 border-border px-3 text-xs font-extrabold transition-colors cursor-pointer sm:text-sm ${
+                    className={`flex h-12 items-center justify-center gap-1 rounded-2xl border-2 border-border px-2.5 text-xs font-extrabold transition-colors cursor-pointer ${
                       onlyWithRepo
                         ? "bg-primary text-primary-foreground"
                         : "bg-background text-foreground hover:bg-muted"
                     }`}
                   >
-                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
                     <span>直达仓库</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOnlyMultiPost((v) => !v)}
+                    title="仅看合并了多篇社区发布/更新帖的项目"
+                    className={`flex h-12 items-center justify-center gap-1 rounded-2xl border-2 border-border px-2.5 text-xs font-extrabold transition-colors cursor-pointer ${
+                      onlyMultiPost
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Layers className="h-3.5 w-3.5 shrink-0" />
+                    <span>多帖关联</span>
                   </button>
                 </div>
               </div>
@@ -630,6 +678,7 @@ export function App() {
 
       <Footer
         updatedAt={dataset?.updatedAt ?? null}
+        totalProjects={displayTotalProjects}
         totalTopics={dataset?.stats.totalTopics ?? 0}
       />
 

@@ -78,14 +78,16 @@ function normalizeRepoCandidate(rawUrl) {
   if (host === "github.com") {
     if (segs.length < 2) return null;
     const owner = segs[0];
-    let repo = segs[1].replace(/\.git$/i, "");
+    const repo = segs[1].replace(/\.git$/i, "");
     if (IGNORED_GH_OWNERS.has(owner.toLowerCase())) return null;
     if (!repo || repo.length < 1) return null;
     return {
       url: `https://github.com/${owner}/${repo}`,
       slug: `${owner}/${repo}`,
+      owner,
+      repo,
       host: "github",
-      priority: 1,
+      baseScore: 100,
     };
   }
 
@@ -93,8 +95,10 @@ function normalizeRepoCandidate(rawUrl) {
     return {
       url: `https://gist.github.com/${segs[0]}/${segs[1]}`,
       slug: `gist:${segs[0]}/${segs[1]}`,
+      owner: segs[0],
+      repo: segs[1],
       host: "github",
-      priority: 2,
+      baseScore: 85,
     };
   }
 
@@ -103,8 +107,10 @@ function normalizeRepoCandidate(rawUrl) {
     return {
       url: `https://gitee.com/${segs[0]}/${repo}`,
       slug: `gitee:${segs[0]}/${repo}`,
+      owner: segs[0],
+      repo,
       host: "gitee",
-      priority: 2,
+      baseScore: 90,
     };
   }
 
@@ -113,8 +119,10 @@ function normalizeRepoCandidate(rawUrl) {
     return {
       url: `https://${host}/${segs[0]}/${repo}`,
       slug: `${host}/${segs[0]}/${repo}`,
+      owner: segs[0],
+      repo,
       host: "gitlab",
-      priority: 2,
+      baseScore: 90,
     };
   }
 
@@ -123,8 +131,10 @@ function normalizeRepoCandidate(rawUrl) {
     return {
       url: `https://codeberg.org/${segs[0]}/${repo}`,
       slug: `codeberg:${segs[0]}/${repo}`,
+      owner: segs[0],
+      repo,
       host: "codeberg",
-      priority: 2,
+      baseScore: 90,
     };
   }
 
@@ -132,8 +142,10 @@ function normalizeRepoCandidate(rawUrl) {
     return {
       url: `https://cnb.cool/${segs[0]}/${segs[1]}`,
       slug: `cnb.cool/${segs[0]}/${segs[1]}`,
+      owner: segs[0],
+      repo: segs[1],
       host: "other",
-      priority: 2,
+      baseScore: 88,
     };
   }
 
@@ -145,8 +157,10 @@ function normalizeRepoCandidate(rawUrl) {
     return {
       url: `https://huggingface.co/${slugPath}`,
       slug: `hf:${slugPath}`,
+      owner: segs[0],
+      repo: segs[segs.length - 1],
       host: "huggingface",
-      priority: 3,
+      baseScore: 80,
     };
   }
 
@@ -155,8 +169,10 @@ function normalizeRepoCandidate(rawUrl) {
     return {
       url: `${u.origin}${u.pathname}`,
       slug: m ? `greasyfork/${m[1].slice(0, 28)}` : "greasyfork",
+      owner: "",
+      repo: m ? m[1] : "",
       host: "greasyfork",
-      priority: 3,
+      baseScore: 80,
     };
   }
 
@@ -165,8 +181,10 @@ function normalizeRepoCandidate(rawUrl) {
     return {
       url: `https://www.npmjs.com/package/${pkg}`,
       slug: `npm:${pkg}`,
+      owner: "",
+      repo: pkg,
       host: "npm",
-      priority: 4,
+      baseScore: 70,
     };
   }
 
@@ -174,8 +192,10 @@ function normalizeRepoCandidate(rawUrl) {
     return {
       url: `https://pypi.org/project/${segs[1]}/`,
       slug: `pypi:${segs[1]}`,
+      owner: "",
+      repo: segs[1],
       host: "pypi",
-      priority: 4,
+      baseScore: 70,
     };
   }
 
@@ -183,8 +203,10 @@ function normalizeRepoCandidate(rawUrl) {
     return {
       url: `https://crates.io/crates/${segs[1]}`,
       slug: `crate:${segs[1]}`,
+      owner: "",
+      repo: segs[1],
       host: "crates",
-      priority: 4,
+      baseScore: 70,
     };
   }
 
@@ -192,8 +214,10 @@ function normalizeRepoCandidate(rawUrl) {
     return {
       url: `${u.origin}${u.pathname}`,
       slug: `docker:${segs.slice(-2).join("/")}`,
+      owner: segs[segs.length - 2] || "",
+      repo: segs[segs.length - 1] || "",
       host: "docker",
-      priority: 4,
+      baseScore: 70,
     };
   }
 
@@ -203,8 +227,10 @@ function normalizeRepoCandidate(rawUrl) {
       return {
         url: `https://github.com/${owner}/${segs[0]}`,
         slug: `${owner}/${segs[0]}`,
+        owner,
+        repo: segs[0],
         host: "github",
-        priority: 3,
+        baseScore: 82,
         demo: cleaned,
       };
     }
@@ -214,17 +240,18 @@ function normalizeRepoCandidate(rawUrl) {
     url: cleaned,
     slug: host,
     host: "other",
-    priority: 9,
+    baseScore: 10,
     isExternalSite: true,
   };
 }
 
-function extractReposAndDemo(rawMarkdown, blurbs, featuredLink) {
+function extractReposAndDemo(rawMarkdown, blurbs, featuredLink, authorUsername, topicTitle) {
   const combined = [rawMarkdown || "", ...(blurbs || []), featuredLink || ""].join("\n");
   const candidates = new Map();
   let demoUrl = null;
 
   const urlRegex = /https?:\/\/[^\s<>"')\]】）》`]+/gi;
+  let orderIdx = 0;
   for (const match of combined.matchAll(urlRegex)) {
     const parsed = normalizeRepoCandidate(match[0]);
     if (!parsed) continue;
@@ -233,8 +260,9 @@ function extractReposAndDemo(rawMarkdown, blurbs, featuredLink) {
       continue;
     }
     if (parsed.demo && !demoUrl) demoUrl = parsed.demo;
-    if (!candidates.has(parsed.url)) {
-      candidates.set(parsed.url, parsed);
+    const lowerKey = parsed.url.toLowerCase();
+    if (!candidates.has(lowerKey)) {
+      candidates.set(lowerKey, { ...parsed, orderIdx: orderIdx++ });
     }
   }
 
@@ -252,20 +280,42 @@ function extractReposAndDemo(rawMarkdown, blurbs, featuredLink) {
       if (m && m[1] && m[2] && !IGNORED_GH_OWNERS.has(m[1].toLowerCase())) {
         const repo = m[2].replace(/\.git$/i, "").replace(/[:.,;]+$/, "");
         const url = `https://github.com/${m[1]}/${repo}`;
-        candidates.set(url, {
+        candidates.set(url.toLowerCase(), {
           url,
           slug: `${m[1]}/${repo}`,
+          owner: m[1],
+          repo,
           host: "github",
-          priority: 1,
+          baseScore: 100,
+          orderIdx: orderIdx++,
         });
         break;
       }
     }
   }
 
-  const sorted = [...candidates.values()].sort((a, b) => a.priority - b.priority);
-  const primary = sorted[0] || null;
-  const extraRepos = sorted.slice(1, 4).map((c) => c.url);
+  // Score candidates using author & title affinity so forks/plugins don't pick upstream repos!
+  const uLower = (authorUsername || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const titleLower = (topicTitle || "").toLowerCase();
+
+  const scored = [...candidates.values()].map((c) => {
+    let score = c.baseScore - c.orderIdx * 2;
+    const ownerClean = (c.owner || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const repoLower = (c.repo || "").toLowerCase();
+
+    if (uLower.length >= 3 && ownerClean) {
+      if (ownerClean === uLower) score += 45;
+      else if (ownerClean.includes(uLower) || uLower.includes(ownerClean)) score += 25;
+    }
+    if (repoLower.length >= 3 && titleLower.includes(repoLower)) {
+      score += 35;
+    }
+    return { ...c, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  const primary = scored[0] || null;
+  const extraRepos = scored.slice(1, 4).map((c) => c.url);
 
   return {
     repoUrl: primary?.url ?? null,
@@ -278,8 +328,8 @@ function extractReposAndDemo(rawMarkdown, blurbs, featuredLink) {
 
 function extractProjectName(title, repoSlug) {
   const t = (title || "")
-    .replace(/^\s*(?:【[^】]{1,12}】|\[[^\]]{1,12}\]|（[^）]{1,10}）|\([^)]{1,10}\))\s*/g, "")
-    .replace(/^\s*(?:开源自荐|开源推广|开源项目|开源分享|自荐|首发)\s*[:：\-—|｜]?\s*/i, "")
+    .replace(/^\s*(?:【[^】]{1,14}】|\[[^\]]{1,14}\]|（[^）]{1,10}）|\([^)]{1,10}\))\s*/g, "")
+    .replace(/^\s*(?:开源自荐|开源推广|开源项目|开源分享|开源软件|开源|自荐|首发)\s*[:：\-—|｜]?\s*/i, "")
     .trim();
 
   const splitMatch = t.match(
@@ -292,9 +342,9 @@ function extractProjectName(title, repoSlug) {
     }
   }
 
-  if (t.length > 28 && repoSlug && repoSlug.includes("/")) {
+  if (repoSlug && repoSlug.includes("/")) {
     const repoPart = repoSlug.split("/").pop().replace(/^(?:hf|gitee|codeberg|gist):/, "");
-    if (repoPart && repoPart.length >= 2 && repoPart.length <= 30) {
+    if (t.length > 26 && repoPart && repoPart.length >= 2 && repoPart.length <= 30) {
       return repoPart;
     }
   }
@@ -305,23 +355,13 @@ function extractProjectName(title, repoSlug) {
 function cleanBoilerplateText(input) {
   if (!input) return "";
   let s = input;
-
-  // Strip Discourse BBCode [details="..."] ... [/details] AND HTML <details>...</details>
   s = s.replace(/\[details[^\]]*\][\s\S]*?\[\/details\]/gi, " ");
   s = s.replace(/<details[\s\S]*?<\/details>/gi, " ");
-
-  // Strip HTML tags
   s = s.replace(/<[^>]+>/g, " ");
-
-  // Strip markdown images & upload links
   s = s.replace(/!\[[^\]]*\]\([^)]+\)/g, " ");
   s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, "$1 ");
   s = s.replace(/\[([^\]]+)\]\(upload:\/\/[^)]+\)/g, " ");
-
-  // Strip raw URLs
   s = s.replace(/https?:\/\/[^\s<>"')\]】]+/g, " ");
-
-  // Strip LINUX DO 开源推广 declaration boilerplate
   s = s.replace(/本帖使用社区开源推广[\s\S]{0,320}?接受社区和佬友监督[：:\s]*是/g, " ");
   s = s.replace(/我申明并遵循社区要求的以下内容[：:\s]*(?:[>*\-\s]|我的[^\n]*|我帖子[^\n]*|以上选择[^\n]*)+/g, " ");
   s = s.replace(/以下为项目介绍正文内容[，,]?\s*AI\s*生成、润色内容已使用截图方式发出[：:。!*\s]*/g, " ");
@@ -332,13 +372,9 @@ function cleanBoilerplateText(input) {
   s = s.replace(/以上选择我承诺是永久有效的[^\n。]*是/g, " ");
   s = s.replace(/#square-full\s*开源推广/g, " ");
   s = s.replace(/\/tag\/2234-tag\/2234/g, " ");
-
-  // Strip Discourse onebox / screenshot filename noise
   s = s.replace(/(?:\b仓库\s+)+/g, " ");
   s = s.replace(/\b(?:PixPin|Snipaste|CleanShot|SCR|Screenshot|image)[A-Za-z0-9_-]*\b/gi, " ");
   s = s.replace(/\b\d{3,4}x\d{3,4}\s+\d+(?:\.\d+)?\s*[KMG]B\b/gi, " ");
-
-  // Strip markdown list/divider artifacts like "* * * ---"
   s = s.replace(/(?:[*>-]\s*){2,}/g, " ");
   s = s.replace(/[#>*`~_]{2,}/g, " ");
   s = s.replace(/\s+/g, " ").trim();
@@ -482,14 +518,7 @@ function pickThumbnail(topic) {
   return null;
 }
 
-const items = [];
-const monthlyMap = new Map();
-const tagCounts = new Map();
-const authorStats = new Map();
-
-let totalLikes = 0;
-let totalViews = 0;
-
+const rawPostEntries = [];
 const seenTopicIds = new Set();
 const sortedTopics = [...(rawTopicsData.topics || [])]
   .filter((t) => {
@@ -499,7 +528,6 @@ const sortedTopics = [...(rawTopicsData.topics || [])]
   })
   .sort((a, b) => b.created_at.localeCompare(a.created_at));
 
-// First pass: build all items
 for (const topic of sortedTopics) {
   const opPoster =
     (topic.posters || []).find((p) => (p.description || "").includes("原始发帖人")) ||
@@ -518,7 +546,9 @@ for (const topic of sortedTopics) {
   const { repoUrl, repoSlug, repoHost, extraRepos, demoUrl } = extractReposAndDemo(
     rawMd,
     blurbs,
-    topic.featured_link
+    topic.featured_link,
+    username,
+    topic.title
   );
 
   const tags = (topic.tags || [])
@@ -532,25 +562,7 @@ for (const topic of sortedTopics) {
   const views = topic.views || 0;
   const replies = Math.max(0, (topic.posts_count || 1) - 1);
 
-  totalLikes += likes;
-  totalViews += views;
-
-  for (const tg of tags) {
-    tagCounts.set(tg, (tagCounts.get(tg) || 0) + 1);
-  }
-
-  const aStat = authorStats.get(username) || {
-    username,
-    name: authorName,
-    avatar,
-    count: 0,
-    totalLikes: 0,
-  };
-  aStat.count += 1;
-  aStat.totalLikes += likes;
-  authorStats.set(username, aStat);
-
-  const item = {
+  rawPostEntries.push({
     id: topic.id,
     name,
     title: topic.title,
@@ -558,81 +570,220 @@ for (const topic of sortedTopics) {
     repoUrl,
     repoSlug,
     repoHost,
+    extraRepos,
+    demoUrl,
     topicUrl: `https://linux.do/t/topic/${topic.id}`,
     createdAt: topic.created_at,
     bumpedAt: topic.bumped_at || topic.last_posted_at || topic.created_at,
     category,
     tags,
-    author: {
-      username,
-      name: authorName,
-      avatar,
-    },
+    author: { username, name: authorName, avatar },
     likes,
     views,
     replies,
     image: pickThumbnail(topic),
-  };
-
-  if (extraRepos.length > 0) item.extraRepos = extraRepos;
-  if (demoUrl) item.demoUrl = demoUrl;
-
-  items.push(item);
+  });
 }
 
-// Second pass: inherit repoUrl for follow-up version posts by the SAME author mentioning an earlier repo/project!
+// Recover repoUrl for follow-up update posts by the SAME author mentioning an earlier sibling repo/project
 const byAuthorWithRepo = new Map();
-for (const item of items) {
-  if (item.repoUrl) {
-    const list = byAuthorWithRepo.get(item.author.username) || [];
-    list.push(item);
-    byAuthorWithRepo.set(item.author.username, list);
+for (const entry of rawPostEntries) {
+  if (entry.repoUrl) {
+    const list = byAuthorWithRepo.get(entry.author.username) || [];
+    list.push(entry);
+    byAuthorWithRepo.set(entry.author.username, list);
   }
 }
 
-for (const item of items) {
-  if (!item.repoUrl) {
-    const siblings = byAuthorWithRepo.get(item.author.username) || [];
-    if (siblings.length === 1) {
-      // Check if title/summary shares a keyword with sibling project
-      const sib = siblings[0];
+for (const entry of rawPostEntries) {
+  if (!entry.repoUrl) {
+    const siblings = byAuthorWithRepo.get(entry.author.username) || [];
+    for (const sib of siblings) {
       const repoName = (sib.repoSlug || "").split("/").pop()?.toLowerCase() || "";
-      if (repoName.length >= 3 && `${item.title} ${item.summary}`.toLowerCase().includes(repoName)) {
-        item.repoUrl = sib.repoUrl;
-        item.repoSlug = sib.repoSlug;
-        item.repoHost = sib.repoHost;
-      }
-    } else if (siblings.length > 1) {
-      for (const sib of siblings) {
-        const repoName = (sib.repoSlug || "").split("/").pop()?.toLowerCase() || "";
-        if (repoName.length >= 3 && `${item.title} ${item.summary}`.toLowerCase().includes(repoName)) {
-          item.repoUrl = sib.repoUrl;
-          item.repoSlug = sib.repoSlug;
-          item.repoHost = sib.repoHost;
-          break;
-        }
+      const sibName = sib.name.toLowerCase();
+      const hay = `${entry.title} ${entry.summary}`.toLowerCase();
+      if (
+        (repoName.length >= 3 && hay.includes(repoName)) ||
+        (sibName.length >= 3 && hay.includes(sibName))
+      ) {
+        entry.repoUrl = sib.repoUrl;
+        entry.repoSlug = sib.repoSlug;
+        entry.repoHost = sib.repoHost;
+        break;
       }
     }
   }
 }
 
-let withRepoCount = 0;
+// Group and deduplicate posts into unified Project records!
+const projectGroups = new Map();
+
+for (const entry of rawPostEntries) {
+  let projectKey;
+  if (entry.repoUrl) {
+    projectKey = entry.repoUrl.toLowerCase();
+  } else {
+    const normName = entry.name
+      .toLowerCase()
+      .replace(/v?\d+(?:\.\d+)+/g, "")
+      .replace(/[^\u4e00-\u9fa5a-z0-9]/g, "")
+      .slice(0, 18);
+    projectKey =
+      normName.length >= 3
+        ? `author:${entry.author.username.toLowerCase()}::${normName}`
+        : `topic:${entry.id}`;
+  }
+
+  const group = projectGroups.get(projectKey) || [];
+  group.push(entry);
+  projectGroups.set(projectKey, group);
+}
+
+const mergedProjects = [];
+const monthlyMap = new Map();
+const tagCounts = new Map();
+const authorStats = new Map();
 const uniqueRepos = new Set();
-for (const item of items) {
-  const month = item.createdAt.slice(0, 7);
+
+let totalLikes = 0;
+let totalViews = 0;
+let withRepoCount = 0;
+let multiPostProjectsCount = 0;
+
+// Track monthly stats across all raw posts (ecosystem activity) while deduplicating project list
+for (const entry of rawPostEntries) {
+  const month = entry.createdAt.slice(0, 7);
   const mEntry = monthlyMap.get(month) || { month, count: 0, withRepo: 0 };
   mEntry.count += 1;
-  if (item.repoUrl) {
-    withRepoCount++;
-    uniqueRepos.add(item.repoUrl.toLowerCase());
-    mEntry.withRepo += 1;
-  }
+  if (entry.repoUrl) mEntry.withRepo += 1;
   monthlyMap.set(month, mEntry);
 }
 
+for (const [projectKey, postsGroup] of projectGroups.entries()) {
+  // Sort posts newest -> oldest
+  postsGroup.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+  const newestPost = postsGroup[0];
+  const oldestPost = postsGroup[postsGroup.length - 1];
+
+  // Pick best project display name & richest summary (prefer post with highest likes or cleanest non-trivial summary)
+  const bestSummaryPost = [...postsGroup].sort((a, b) => {
+    const aScore = (a.summary.length > 35 ? 50 : 0) + a.likes;
+    const bScore = (b.summary.length > 35 ? 50 : 0) + b.likes;
+    return bScore - aScore;
+  })[0];
+
+  // Prefer canonical repo name when multi-post or oldest (first release) post name
+  let projectName = bestSummaryPost.name;
+  if (postsGroup.length > 1 && newestPost.repoSlug && newestPost.repoSlug.includes("/")) {
+    const repoPart = newestPost.repoSlug.split("/").pop().replace(/^(?:hf|gitee|codeberg|gist):/, "");
+    if (oldestPost.name.length >= 2 && oldestPost.name.length <= 20) {
+      projectName = oldestPost.name;
+    } else if (repoPart && repoPart.length >= 2) {
+      projectName = repoPart;
+    }
+  } else {
+    const shortPost = postsGroup.find((p) => p.name.length >= 2 && p.name.length <= 22);
+    if (shortPost) projectName = shortPost.name;
+  }
+
+  const unionTags = [...new Set(postsGroup.flatMap((p) => p.tags))].slice(0, 8);
+  const unionExtras = [
+    ...new Set(
+      postsGroup
+        .flatMap((p) => p.extraRepos || [])
+        .filter((u) => u.toLowerCase() !== (newestPost.repoUrl || "").toLowerCase())
+    ),
+  ].slice(0, 4);
+
+  const demoUrl = postsGroup.find((p) => p.demoUrl)?.demoUrl || null;
+  const bestImage = postsGroup.find((p) => p.image)?.image || null;
+  const latestBumped = postsGroup.reduce(
+    (max, p) => (p.bumpedAt > max ? p.bumpedAt : max),
+    newestPost.bumpedAt
+  );
+
+  const sumLikes = postsGroup.reduce((s, p) => s + p.likes, 0);
+  const sumViews = postsGroup.reduce((s, p) => s + p.views, 0);
+  const sumReplies = postsGroup.reduce((s, p) => s + p.replies, 0);
+
+  // Primary creator is the original poster of the earliest post (the project creator!)
+  const creator = oldestPost.author;
+
+  if (postsGroup.length > 1) multiPostProjectsCount++;
+  if (newestPost.repoUrl) {
+    withRepoCount++;
+    uniqueRepos.add(newestPost.repoUrl.toLowerCase());
+  }
+
+  totalLikes += sumLikes;
+  totalViews += sumViews;
+
+  for (const tg of unionTags) {
+    tagCounts.set(tg, (tagCounts.get(tg) || 0) + 1);
+  }
+
+  const aStat = authorStats.get(creator.username) || {
+    username: creator.username,
+    name: creator.name,
+    avatar: creator.avatar,
+    count: 0,
+    totalLikes: 0,
+  };
+  aStat.count += 1;
+  aStat.totalLikes += sumLikes;
+  authorStats.set(creator.username, aStat);
+
+  const relatedPosts = postsGroup.map((p) => ({
+    id: p.id,
+    title: p.title,
+    topicUrl: p.topicUrl,
+    createdAt: p.createdAt,
+    likes: p.likes,
+    views: p.views,
+    replies: p.replies,
+    authorUsername: p.author.username,
+  }));
+
+  const projectItem = {
+    id: newestPost.id,
+    projectKey,
+    name: projectName,
+    title: newestPost.title,
+    summary: bestSummaryPost.summary,
+    repoUrl: newestPost.repoUrl,
+    repoSlug: newestPost.repoSlug,
+    repoHost: newestPost.repoHost,
+    topicUrl: newestPost.topicUrl,
+    createdAt: newestPost.createdAt,
+    firstCreatedAt: oldestPost.createdAt,
+    bumpedAt: latestBumped,
+    category: bestSummaryPost.category,
+    tags: unionTags,
+    author: creator,
+    likes: sumLikes,
+    views: sumViews,
+    replies: sumReplies,
+    image: bestImage,
+    postCount: relatedPosts.length,
+    ...(relatedPosts.length > 1 ? { posts: relatedPosts } : {}),
+  };
+
+  if (unionExtras.length > 0) projectItem.extraRepos = unionExtras;
+  if (demoUrl) projectItem.demoUrl = demoUrl;
+
+  mergedProjects.push(projectItem);
+}
+
+// Sort merged projects by latest post creation date descending
+mergedProjects.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
 const updatedAt = new Date().toISOString();
 const stats = {
-  totalTopics: items.length,
+  totalProjects: mergedProjects.length,
+  totalTopics: rawPostEntries.length,
+  mergedDuplicatePosts: rawPostEntries.length - mergedProjects.length,
+  multiPostProjectsCount,
   withRepoCount,
   uniqueReposCount: uniqueRepos.size,
   totalLikes,
@@ -651,20 +802,19 @@ const stats = {
 const dataset = {
   updatedAt,
   sourceUrl: "https://linux.do/tag/2234-tag/2234",
+  dataSource: "static-fallback",
   stats,
-  items,
+  items: mergedProjects,
 };
 
-// Also create a lightweight ~60KB initial bootstrap payload (stats + newest 48 + top 12 all-time)
-// so the page renders instantaneously in <50ms while full 5,645 items stream in background!
 const initialIds = new Set();
 const initialItems = [];
 for (const item of [
-  ...items.slice(0, 48),
-  ...[...items].filter((i) => i.repoUrl).sort((a, b) => b.likes - a.likes).slice(0, 12),
+  ...mergedProjects.slice(0, 48),
+  ...[...mergedProjects].filter((i) => i.repoUrl).sort((a, b) => b.likes - a.likes).slice(0, 12),
 ]) {
-  if (!initialIds.has(item.id)) {
-    initialIds.add(item.id);
+  if (!initialIds.has(item.projectKey)) {
+    initialIds.add(item.projectKey);
     initialItems.push(item);
   }
 }
@@ -672,8 +822,9 @@ for (const item of [
 const initialDataset = {
   updatedAt,
   sourceUrl: "https://linux.do/tag/2234-tag/2234",
-  stats,
+  dataSource: "static-fallback",
   isPartial: true,
+  stats,
   items: initialItems,
 };
 
@@ -681,10 +832,11 @@ fs.mkdirSync(path.dirname(OUT_FILE), { recursive: true });
 fs.writeFileSync(OUT_FILE, JSON.stringify(dataset));
 fs.writeFileSync(OUT_INITIAL_FILE, JSON.stringify(initialDataset));
 
-console.log("Dataset built successfully!", {
-  fullSizeMB: `${(fs.statSync(OUT_FILE).size / 1024 / 1024).toFixed(2)} MB`,
-  initialSizeKB: `${(fs.statSync(OUT_INITIAL_FILE).size / 1024).toFixed(1)} KB`,
-  totalTopics: stats.totalTopics,
+console.log("Deduplicated dataset built!", {
+  totalRawPosts: stats.totalTopics,
+  uniqueProjects: stats.totalProjects,
+  mergedDuplicatePosts: stats.mergedDuplicatePosts,
+  multiPostProjectsCount: stats.multiPostProjectsCount,
   withRepoCount: stats.withRepoCount,
-  uniqueReposCount: stats.uniqueReposCount,
+  fullSizeMB: `${(fs.statSync(OUT_FILE).size / 1024 / 1024).toFixed(2)} MB`,
 });

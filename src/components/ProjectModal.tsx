@@ -13,9 +13,11 @@ import {
   User,
   Globe,
   Tag,
+  Layers,
+  ArrowUpRight,
 } from "lucide-react";
-import type { ProjectItem } from "../types";
-import { formatDateTime, getHostLabel } from "../utils/format";
+import type { ProjectItem, RelatedPost } from "../types";
+import { formatDateTime, formatCompactNumber, getHostLabel } from "../utils/format";
 
 interface ProjectModalProps {
   item: ProjectItem | null;
@@ -53,6 +55,22 @@ export function ProjectModal({ item, onClose, onSelectTag }: ProjectModalProps) 
     setTimeout(() => setCopied(false), 1800);
   };
 
+  const relatedPosts: RelatedPost[] =
+    item.posts && item.posts.length > 0
+      ? item.posts
+      : [
+          {
+            id: item.id,
+            title: item.title,
+            topicUrl: item.topicUrl,
+            createdAt: item.createdAt,
+            likes: item.likes,
+            views: item.views,
+            replies: item.replies,
+            authorUsername: item.author.username,
+          },
+        ];
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"
@@ -64,13 +82,19 @@ export function ProjectModal({ item, onClose, onSelectTag }: ProjectModalProps) 
       >
         {/* Sticky Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b-2 border-border bg-card/95 px-6 py-4 backdrop-blur-md">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-xl border-2 border-border bg-primary px-3 py-0.5 text-xs font-extrabold text-primary-foreground">
               {item.category}
             </span>
             {item.repoHost && (
               <span className="rounded-xl border border-border bg-muted px-2.5 py-0.5 font-mono text-xs font-bold">
                 {getHostLabel(item.repoHost)}
+              </span>
+            )}
+            {item.postCount > 1 && (
+              <span className="inline-flex items-center gap-1 rounded-xl border border-primary/50 bg-primary/15 px-2.5 py-0.5 font-mono text-xs font-extrabold text-primary">
+                <Layers className="h-3.5 w-3.5" />
+                <span>已关联 {item.postCount} 篇社区帖</span>
               </span>
             )}
             <span className="font-mono text-xs text-muted-foreground">#{item.id}</span>
@@ -110,7 +134,9 @@ export function ProjectModal({ item, onClose, onSelectTag }: ProjectModalProps) 
             <div className="flex items-center gap-2.5 text-xs font-bold">
               <Calendar className="h-4 w-4 shrink-0 text-primary" />
               <div>
-                <div className="text-muted-foreground">帖子创建时间</div>
+                <div className="text-muted-foreground">
+                  {item.postCount > 1 ? "最新发帖时间" : "帖子创建时间"}
+                </div>
                 <div className="font-mono text-sm text-foreground">
                   {formatDateTime(item.createdAt)}
                 </div>
@@ -120,9 +146,15 @@ export function ProjectModal({ item, onClose, onSelectTag }: ProjectModalProps) 
             <div className="flex items-center gap-2.5 text-xs font-bold">
               <Clock className="h-4 w-4 shrink-0 text-primary" />
               <div>
-                <div className="text-muted-foreground">最近互动时间</div>
+                <div className="text-muted-foreground">
+                  {item.postCount > 1 && item.firstCreatedAt
+                    ? "首次发布时间"
+                    : "最近互动时间"}
+                </div>
                 <div className="font-mono text-sm text-foreground">
-                  {formatDateTime(item.bumpedAt)}
+                  {formatDateTime(
+                    item.postCount > 1 && item.firstCreatedAt ? item.firstCreatedAt : item.bumpedAt
+                  )}
                 </div>
               </div>
             </div>
@@ -137,21 +169,23 @@ export function ProjectModal({ item, onClose, onSelectTag }: ProjectModalProps) 
                   rel="noopener noreferrer"
                   className="font-mono text-sm text-foreground underline decoration-dotted hover:text-primary"
                 >
-                  {item.author.name ? `${item.author.name} (@${item.author.username})` : `@${item.author.username}`}
+                  {item.author.name
+                    ? `${item.author.name} (@${item.author.username})`
+                    : `@${item.author.username}`}
                 </a>
               </div>
             </div>
 
             <div className="flex items-center gap-4 font-mono text-xs font-bold">
-              <span className="inline-flex items-center gap-1 text-primary">
+              <span className="inline-flex items-center gap-1 text-primary" title="关联帖子累计点赞">
                 <Heart className="h-4 w-4" />
                 {item.likes.toLocaleString()} 赞
               </span>
-              <span className="inline-flex items-center gap-1">
+              <span className="inline-flex items-center gap-1" title="关联帖子累计浏览">
                 <Eye className="h-4 w-4" />
                 {item.views.toLocaleString()} 浏览
               </span>
-              <span className="inline-flex items-center gap-1">
+              <span className="inline-flex items-center gap-1" title="关联帖子累计回复">
                 <MessageSquare className="h-4 w-4" />
                 {item.replies.toLocaleString()} 回复
               </span>
@@ -180,7 +214,11 @@ export function ProjectModal({ item, onClose, onSelectTag }: ProjectModalProps) 
                     onClick={() => copyRepo(item.repoUrl!)}
                     className="tactile-btn inline-flex shrink-0 items-center gap-1.5 self-start rounded-xl bg-card px-3 py-1.5 text-xs font-extrabold cursor-pointer"
                   >
-                    {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copied ? (
+                      <Check className="h-3.5 w-3.5 text-primary" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" />
+                    )}
                     <span>{copied ? "已复制" : "复制地址"}</span>
                   </button>
                 </div>
@@ -236,6 +274,69 @@ export function ProjectModal({ item, onClose, onSelectTag }: ProjectModalProps) 
             </p>
           </div>
 
+          {/* Associated Posts Timeline (especially highlighted when multiple posts map to this single project) */}
+          <div>
+            <div className="mb-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-sm font-extrabold text-foreground">
+                <Layers className="h-4 w-4 text-primary" />
+                <span>关联社区帖子 ({relatedPosts.length} 篇)</span>
+              </div>
+              {relatedPosts.length > 1 && (
+                <span className="text-xs font-bold text-muted-foreground">
+                  同项目多帖已自动去重合并 · 按时间倒序
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-2 rounded-2xl border-2 border-border bg-muted/35 p-3">
+              {relatedPosts.map((post, idx) => {
+                const isFirstRelease = relatedPosts.length > 1 && idx === relatedPosts.length - 1;
+                const isLatestUpdate = relatedPosts.length > 1 && idx === 0;
+                return (
+                  <a
+                    key={post.id}
+                    href={post.topicUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex flex-col gap-1.5 rounded-xl border border-border-subtle bg-card px-3.5 py-2.5 transition-colors hover:border-primary"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                        {isLatestUpdate && (
+                          <span className="shrink-0 rounded-md border border-border bg-primary px-1.5 py-0.5 text-[10px] font-extrabold text-primary-foreground">
+                            最新帖
+                          </span>
+                        )}
+                        {isFirstRelease && (
+                          <span className="shrink-0 rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] font-extrabold text-foreground">
+                            首发帖
+                          </span>
+                        )}
+                        {!isLatestUpdate && !isFirstRelease && relatedPosts.length > 1 && (
+                          <span className="shrink-0 rounded-md border border-border-subtle bg-muted/60 px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
+                            迭代帖
+                          </span>
+                        )}
+                        <span className="font-bold text-sm text-foreground group-hover:text-primary">
+                          {post.title}
+                        </span>
+                      </div>
+                      <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 font-mono text-[11px] font-bold text-muted-foreground">
+                      <span>{formatDateTime(post.createdAt)}</span>
+                      <span>@{post.authorUsername}</span>
+                      <span className="text-primary">♥ {formatCompactNumber(post.likes)}</span>
+                      <span>👁 {formatCompactNumber(post.views)}</span>
+                      <span>💬 {formatCompactNumber(post.replies)}</span>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Tags */}
           {item.tags.length > 0 && (
             <div>
@@ -280,7 +381,7 @@ export function ProjectModal({ item, onClose, onSelectTag }: ProjectModalProps) 
               rel="noopener noreferrer"
               className="tactile-btn inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-card px-5 py-3 text-sm font-extrabold text-foreground"
             >
-              <span>前往 LINUX DO 原帖讨论</span>
+              <span>前往最新原帖讨论</span>
               <ExternalLink className="h-4 w-4" />
             </a>
           </div>

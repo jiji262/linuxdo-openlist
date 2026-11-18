@@ -10,6 +10,7 @@ import {
   Github,
   Code2,
   ArrowUpRight,
+  Layers,
 } from "lucide-react";
 import type { ProjectItem } from "../types";
 import {
@@ -58,6 +59,15 @@ export function ProjectCard({
             <h3 className="truncate text-base font-extrabold group-hover:text-primary sm:text-lg">
               {item.name}
             </h3>
+            {item.postCount > 1 && (
+              <span
+                title={`该项目共关联 ${item.postCount} 篇社区发布/更新帖，点击查看全部`}
+                className="inline-flex items-center gap-1 rounded-lg border border-primary/50 bg-primary/15 px-2 py-0.5 font-mono text-[11px] font-extrabold text-primary"
+              >
+                <Layers className="h-3 w-3 shrink-0" />
+                <span>关联 {item.postCount} 篇帖子</span>
+              </span>
+            )}
             {item.repoSlug && (
               <span className="inline-flex max-w-[260px] items-center gap-1 rounded-lg border border-border bg-muted px-2 py-0.5 font-mono text-xs font-bold">
                 <Github className="h-3 w-3 shrink-0 text-primary" />
@@ -140,13 +150,22 @@ export function ProjectCard({
         <div className="p-5">
           {/* Category, Host & Relative Time Row */}
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <span className="rounded-xl border border-border bg-primary/15 px-2.5 py-0.5 text-xs font-extrabold text-primary">
                 {item.category}
               </span>
               {item.repoHost && (
                 <span className="rounded-xl border border-border bg-muted px-2 py-0.5 font-mono text-[11px] font-bold">
                   {getHostLabel(item.repoHost)}
+                </span>
+              )}
+              {item.postCount > 1 && (
+                <span
+                  title={`已合并关联 ${item.postCount} 篇同项目帖子，点击卡片查看全部关联帖`}
+                  className="inline-flex items-center gap-1 rounded-xl border border-primary/50 bg-primary/15 px-2 py-0.5 font-mono text-[11px] font-extrabold text-primary"
+                >
+                  <Layers className="h-3 w-3 shrink-0" />
+                  <span>关联 {item.postCount} 篇帖子</span>
                 </span>
               )}
             </div>
@@ -158,8 +177,16 @@ export function ProjectCard({
           {/* Post Creation Timestamp */}
           <div className="mb-2 flex items-center gap-1.5 font-mono text-xs font-bold text-muted-foreground">
             <Calendar className="h-3.5 w-3.5 text-primary" />
-            <time dateTime={item.createdAt} title="帖子创建时间">
-              发布于 {formatDateTime(item.createdAt)}
+            <time
+              dateTime={item.createdAt}
+              title={
+                item.postCount > 1 && item.firstCreatedAt
+                  ? `首次发布于 ${formatDateTime(item.firstCreatedAt)}`
+                  : "帖子创建时间"
+              }
+            >
+              {item.postCount > 1 ? "最新发帖 " : "发布于 "}
+              {formatDateTime(item.createdAt)}
             </time>
           </div>
 
